@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Informasi Sekolah</title>
+    <!-- Memuat Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Font Awesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Memuat Font Inter dari Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icon untuk tab browser -->
+    <link rel="icon" href="https://placehold.co/32x32/003366/ffffff?text=SMANIDA">
+     <!-- Memuat Tone.js untuk efek suara -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        /* Menggunakan font Inter sebagai font utama */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Warna dasar yang sangat terang */
+            color: #495057; /* Warna teks utama yang lembut */
+            overflow-x: hidden; /* Mencegah scroll horizontal */
+        }
+        #background-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Menempatkan canvas di belakang semua konten */
+        }
+        /* Style untuk transisi yang mulus */
+        .dashboard-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Menambahkan sedikit bayangan pada header saat di-scroll */
+        .scrolled {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+        }
+        /* Animasi untuk modal */
+        @keyframes modal-pop {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal-pop {
+            animation: modal-pop 0.3s ease-out;
+        }
+        /* Animasi spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4f46e5;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Desain kartu baru yang modern */
+        .dashboard-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px) saturate(1.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            transition: all 0.3s ease;
+            border-top: 4px solid transparent;
+            border-image: linear-gradient(to right, #6366f1, #22d3ee) 1;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        /* Transisi untuk modal backdrop */
+        .modal-container {
+             transition: opacity 0.3s ease-in-out;
+             opacity: 0;
+        }
+
+        /* Transisi umum untuk interaksi yang lebih halus */
+        button, a {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Efek visual saat tombol ditekan */
+        button:active {
+            transform: scale(0.97);
+        }
+        .attendance-select {
+            @apply p-1 rounded-md border-gray-300 bg-white;
+        }
+        .admin-data-row {
+            @apply cursor-pointer hover:bg-gray-100 transition-colors;
+        }
+        .calendar-day { @apply flex items-center justify-center h-12 w-12 rounded-full; }
+        .calendar-day.today { @apply bg-indigo-600 text-white font-bold; }
+        .calendar-day.event { @apply bg-yellow-400 text-yellow-900 font-semibold relative; }
+        .calendar-day.event::after {
+            content: '';
+            @apply absolute bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <canvas id="background-canvas"></canvas>
+
+    <!-- === BAGIAN LOGIN === -->
+    <div id="login-page" class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 space-y-6">
+            <div class="text-center">
+                <img src="https://placehold.co/100x100/003366/ffffff?text=SMANIDA" alt="Logo SMAN 1 Dramaga" class="mx-auto mb-4 rounded-full">
+                <h1 class="text-3xl font-bold text-indigo-700">Portal Informasi Sekolah</h1>
+                <p class="text-slate-500 mt-2">Selamat datang di Portal SMAN 1 Dramaga.</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="username" class="text-sm font-medium text-slate-600">Username</label>
+                    <input type="text" id="username" name="username" required class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Masukkan username">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-slate-600">Password</label>
+                    <input type="password" id="password" name="password" required class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Masukkan password">
+                </div>
+                <div>
+                    <label for="role" class="text-sm font-medium text-slate-600">Masuk sebagai</label>
+                    <select id="role" name="role" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <option value="siswa">Siswa / Orang Tua</option>
+                        <option value="guru">Guru</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between">
+                    <a href="#" id="forgot-password-link" class="text-sm text-indigo-600 hover:underline">Lupa password?</a>
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-75">
+                        <span class="login-text">Menghubungkan...</span>
+                        <span class="login-spinner hidden"><div class="spinner !w-5 !h-5 !border-2 !border-left-white"></div></span>
+                    </button>
+                </div>
+            </form>
+             <p id="login-error" class="text-red-500 text-sm text-center hidden">Username atau password salah.</p>
+        </div>
+    </div>
+
+    <!-- === BAGIAN UTAMA APLIKASI (SETELAH LOGIN) === -->
+    <div id="app" class="hidden flex-grow">
+        <!-- Header Aplikasi -->
+        <header id="app-header" class="bg-white/70 p-4 flex justify-between items-center sticky top-0 z-50 transition-all duration-300">
+            <div class="flex items-center space-x-4">
+                <img src="https://placehold.co/40x40/003366/ffffff?text=SMANIDA" alt="Logo Sekolah" class="rounded-full">
+                <h1 class="text-xl font-bold text-indigo-800 hidden sm:block">Portal SMAN 1 Dramaga</h1>
+            </div>
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                 <!-- Jam Digital -->
+                <div id="live-clock" class="text-sm font-semibold text-slate-600 hidden sm:block"></div>
+                 <!-- Tombol Notifikasi -->
+                <div class="relative">
+                    <button id="notification-btn" class="text-slate-500 hover:text-indigo-600 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        <span id="notification-dot" class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white hidden"></span>
+                    </button>
+                    <!-- Dropdown Notifikasi -->
+                    <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-64 sm:w-80 bg-white rounded-lg shadow-xl overflow-hidden z-[80]">
+                        <div class="p-3 font-bold text-indigo-800 border-b border-gray-200">Notifikasi</div>
+                        <div id="notification-list" class="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+                            <!-- Notifikasi dinamis dari JS -->
+                        </div>
+                    </div>
+                </div>
+
+                 <span id="user-info" class="text-right text-sm">
+                    <!-- Konten diinjeksi oleh JavaScript -->
+                </span>
+                <button id="logout-btn" class="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md flex items-center justify-center gap-2">
+                    <i class="fas fa-right-from-bracket"></i>
+                    <span>Keluar</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4 sm:p-6 lg:p-8 flex-grow">
+            <!-- === Dasbor Siswa & Orang Tua === -->
+            <div id="siswa-dashboard" class="dashboard-section space-y-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-indigo-800">Dasbor Siswa</h2>
+                    <p id="welcome-message-siswa" class="mt-1 text-slate-600"></p>
+                </div>
+                <!-- Grid Fitur -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Informasi Akademik -->
+                    <div class="dashboard-card col-span-1 md:col-span-2">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Informasi Akademik</h3>
+                        <div class="space-y-4">
+                             <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p><strong>Nilai Rata-rata:</strong> <span id="student-avg-grade" class="font-bold text-lg text-indigo-600">88.5</span></p>
+                                    <p><strong>Absensi:</strong> <span id="student-attendance">98%</span></p>
+                                </div>
+                                <div class="text-right">
+                                     <p><strong>Peringkat Kelas:</strong> <span class="font-bold text-lg text-green-600">3 dari 36</span></p>
+                                </div>
+                             </div>
+                            <p><strong>Jadwal Hari Ini:</strong> Matematika, Bahasa Indonesia, IPA</p>
+                            <p><strong>Tugas Mendatang:</strong> Esai Sejarah (Deadline: 3 hari lagi)</p>
+                             <button id="calendar-btn" class="mt-4 w-full bg-gradient-to-r from-cyan-500 to-teal-500 text-white py-2 rounded-lg hover:from-cyan-600 hover:to-teal-600">Lihat Kalender Akademik</button>
+                        </div>
+                    </div>
+                    <!-- Asisten Belajar Cerdas (Gemini) -->
+                    <div class="dashboard-card col-span-1 md:col-span-2">
+                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">✨ Asisten Belajar Cerdas</h3>
+                        <p class="text-slate-600 text-sm mb-4">Butuh bantuan belajar, merangkum materi, atau membuat soal latihan? Coba di sini!</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+                            <button id="open-study-assistant-btn" class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:from-purple-600 hover:to-indigo-700">
+                                <i class="fas fa-question-circle mr-2"></i> Tanya
+                            </button>
+                            <button id="open-summarizer-btn" class="w-full bg-gradient-to-r from-sky-500 to-cyan-600 text-white font-bold py-2 px-4 rounded-lg hover:from-sky-600 hover:to-cyan-700">
+                                <i class="fas fa-file-alt mr-2"></i> Rangkum
+                            </button>
+                            <button id="open-practice-quiz-btn" class="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-2 px-4 rounded-lg hover:from-orange-600 hover:to-red-600">
+                                <i class="fas fa-pencil-alt mr-2"></i> Latihan
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Nilai & Rapor -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Nilai & Rapor</h3>
+                        <p>Lihat detail nilai per mata pelajaran dan unduh rapor.</p>
+                        <button id="view-grades-btn" class="mt-4 w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 rounded-lg hover:from-green-600 hover:to-emerald-700">Buka Nilai</button>
+                    </div>
+                    <!-- Materi Pelajaran -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Materi Pelajaran</h3>
+                        <p>Lihat materi & tugas yang diunggah oleh guru.</p>
+                        <button id="view-materials-btn" class="mt-4 w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600">Buka Materi</button>
+                    </div>
+                    <!-- Papan Pesan -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Papan Pesan</h3>
+                        <p>Komunikasi dengan guru dan lihat pengumuman.</p>
+                        <button id="message-board-btn" class="mt-4 w-full bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white py-2 rounded-lg hover:from-fuchsia-600 hover:to-pink-600">Buka Papan Pesan</button>
+                    </div>
+                     <!-- Pengumuman Sekolah -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Pengumuman Sekolah</h3>
+                        <p>Lihat pengumuman resmi terbaru dari sekolah.</p>
+                        <button id="announcements-btn" class="mt-4 w-full bg-gradient-to-r from-slate-700 to-slate-800 text-white py-2 rounded-lg hover:from-slate-800 hover:to-slate-900">Lihat Pengumuman</button>
+                    </div>
+                     <!-- Perpustakaan Digital -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Perpustakaan Digital</h3>
+                        <p>Akses ribuan buku digital dan materi belajar.</p>
+                        <button id="library-btn" class="mt-4 w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-2 rounded-lg hover:from-teal-600 hover:to-emerald-600">Kunjungi Perpustakaan</button>
+                    </div>
+                    <!-- Info Lomba & Acara -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Info Lomba & Acara</h3>
+                        <p>Jangan lewatkan acara dan kompetisi sekolah.</p>
+                        <button id="events-btn" class="mt-4 w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2 rounded-lg hover:from-orange-600 hover:to-amber-600">Lihat Semua</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- === Dasbor Guru === -->
+            <div id="guru-dashboard" class="dashboard-section space-y-8">
+                 <div>
+                    <h2 class="text-3xl font-bold text-indigo-800">Dasbor Guru</h2>
+                    <p id="welcome-message-guru" class="mt-1 text-slate-600"></p>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Manajemen Kelas -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Manajemen Kelas</h3>
+                        <p>Kelola absensi, nilai, dan catatan siswa.</p>
+                        <button id="class-management-btn" class="mt-4 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-indigo-600 hover:to-purple-700">Kelola Kelas</button>
+                    </div>
+                    <!-- Jadwal Mengajar -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Jadwal Mengajar</h3>
+                        <p>Lihat jadwal mengajar Anda minggu ini.</p>
+                        <button id="teacher-schedule-btn" class="mt-4 w-full bg-gradient-to-r from-cyan-500 to-teal-600 text-white py-2 px-4 rounded-lg hover:from-cyan-600 hover:to-teal-700">Lihat Jadwal</button>
+                    </div>
+                     <!-- Asisten Guru Cerdas (Gemini) -->
+                     <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">✨ Asisten Guru Cerdas</h3>
+                        <p class="text-slate-600 text-sm mb-4">Otomatisasi tugas-tugas Anda dengan AI.</p>
+                        <div class="flex flex-col space-y-2">
+                             <button id="open-announcement-generator-btn" class="w-full bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:from-green-600 hover:to-teal-700">
+                                Draf Pengumuman
+                            </button>
+                            <button id="open-quiz-generator-btn" class="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:from-red-600 hover:to-orange-600">
+                                Buat Soal
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Materi Pembelajaran -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Materi Pembelajaran</h3>
+                        <p>Unggah dan kelola materi untuk siswa.</p>
+                        <button id="upload-material-btn" class="mt-4 w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2 rounded-lg hover:from-blue-600 hover:to-indigo-600">Kelola Materi</button>
+                    </div>
+                    <!-- Papan Pesan -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Papan Pesan</h3>
+                        <p>Kirim pesan & pengumuman ke kelas.</p>
+                        <button id="teacher-message-board-btn" class="mt-4 w-full bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white py-2 rounded-lg hover:from-fuchsia-600 hover:to-pink-600">Buka Papan Pesan</button>
+                    </div>
+                    <!-- Kelola Perpustakaan -->
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Perpustakaan Digital</h3>
+                        <p>Tambah koleksi buku digital sekolah.</p>
+                        <button id="manage-library-btn" class="mt-4 w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-2 rounded-lg hover:from-teal-600 hover:to-emerald-600">Kelola Perpustakaan</button>
+                    </div>
+                     <!-- Pengumuman Sekolah -->
+                     <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Pengumuman Sekolah</h3>
+                        <p>Lihat atau terbitkan pengumuman resmi.</p>
+                        <button id="teacher-announcements-btn" class="mt-4 w-full bg-gradient-to-r from-slate-700 to-slate-800 text-white py-2 rounded-lg hover:from-slate-800 hover:to-slate-900">Kelola Pengumuman</button>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- === Dasbor Admin === -->
+            <div id="admin-dashboard" class="dashboard-section space-y-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-indigo-800">Dasbor Administrasi</h2>
+                    <p id="welcome-message-admin" class="mt-1 text-slate-600"></p>
+                </div>
+                <!-- Statistik Cepat -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="dashboard-card text-center">
+                        <i class="fas fa-users text-3xl text-indigo-500 mb-2"></i>
+                        <p id="total-students-stat" class="text-4xl font-bold text-indigo-600">1296</p>
+                        <p class="text-slate-500">Total Siswa</p>
+                    </div>
+                     <div class="dashboard-card text-center">
+                        <i class="fas fa-chalkboard-teacher text-3xl text-teal-500 mb-2"></i>
+                        <p id="total-staff-stat" class="text-4xl font-bold text-teal-600">85</p>
+                        <p class="text-slate-500">Total Staf</p>
+                    </div>
+                     <div class="dashboard-card text-center">
+                        <i class="fas fa-wallet text-3xl text-green-500 mb-2"></i>
+                        <p class="text-4xl font-bold text-green-600">95%</p>
+                        <p class="text-slate-500">Pembayaran Lunas</p>
+                    </div>
+                     <div class="dashboard-card text-center">
+                        <i class="fas fa-bullhorn text-3xl text-orange-500 mb-2"></i>
+                        <p id="total-announcements-stat" class="text-4xl font-bold text-orange-600">3</p>
+                        <p class="text-slate-500">Pengumuman Aktif</p>
+                    </div>
+                </div>
+                <!-- Menu Manajemen -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Manajemen Data</h3>
+                        <div class="flex flex-col space-y-3">
+                            <button data-feature="manage-students" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 p-3 rounded-lg"><i class="fas fa-user-graduate mr-2"></i>Kelola Data Siswa</button>
+                            <button data-feature="manage-staff" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 p-3 rounded-lg"><i class="fas fa-user-tie mr-2"></i>Kelola Data Staf</button>
+                            <button data-feature="manage-accounts" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 p-3 rounded-lg"><i class="fas fa-users-cog mr-2"></i>Kelola Akun</button>
+                             <button data-feature="manage-library" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 p-3 rounded-lg"><i class="fas fa-book mr-2"></i>Kelola Perpustakaan</button>
+                        </div>
+                    </div>
+                     <div class="dashboard-card">
+                        <h3 class="text-xl font-semibold mb-4 text-indigo-800">Keuangan & Laporan</h3>
+                         <div class="flex flex-col space-y-3">
+                            <button data-feature="monitor-payments" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 p-3 rounded-lg"><i class="fas fa-credit-card mr-2"></i>Monitor Pembayaran</button>
+                            <button data-feature="finance-reports" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 p-3 rounded-lg"><i class="fas fa-file-invoice-dollar mr-2"></i>Laporan Keuangan</button>
+                            <button data-feature="academic-analysis" class="admin-feature-btn w-full text-left text-white bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 p-3 rounded-lg"><i class="fas fa-chart-line mr-2"></i>Analisis Akademik</button>
+                        </div>
+                    </div>
+                    <!-- Gemini Content Center -->
+                    <div class="dashboard-card">
+                         <h3 class="text-xl font-semibold mb-2 text-indigo-800">✨ Pusat Konten AI</h3>
+                        <p class="text-slate-600 text-sm mb-4">Buat draf pengumuman, konten media sosial, dan lainnya dengan cepat.</p>
+                        <button id="open-content-center-btn" class="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:from-indigo-600 hover:to-blue-700 mt-4">
+                            <i class="fas fa-magic mr-2"></i> Buka Pusat Konten
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center p-4 text-slate-500 text-sm">
+            © 2025 SMAN 1 Dramaga. Hak Cipta Dilindungi.
+        </footer>
+    </div>
+    
+    <!-- === Modal Universal untuk Fitur Non-AI === -->
+    <div id="feature-modal" class="modal-container fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] hidden">
+        <div id="feature-modal-content" class="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 relative animate-modal-pop max-h-[90vh] flex flex-col">
+            <!-- Konten modal akan diinjeksi oleh JavaScript -->
+        </div>
+    </div>
+
+    <!-- === Modal Universal untuk Fitur Gemini === -->
+    <div id="gemini-modal" class="modal-container fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[70] hidden">
+        <div id="gemini-modal-content" class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative animate-modal-pop max-h-[90vh] flex flex-col">
+            <!-- Konten modal akan diinjeksi oleh JavaScript -->
+        </div>
+    </div>
+
+    <!-- === Modal Konfirmasi === -->
+    <div id="confirmation-modal" class="modal-container fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 relative animate-modal-pop text-center">
+            <h3 id="confirmation-title" class="text-xl font-bold mb-4"></h3>
+            <p id="confirmation-message" class="text-slate-600 mb-6"></p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-btn" class="bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold py-2 px-6 rounded-lg hover:from-red-700 hover:to-rose-800 w-24 h-11 flex items-center justify-center">Ya</button>
+                <button id="cancel-btn" class="bg-gray-200 text-slate-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300">Batal</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // === Impor Firebase SDK ===
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, setLogLevel, collection, addDoc, serverTimestamp, query, getDocs, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+
+        // === Konfigurasi & Inisialisasi Firebase ===
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'portal-sekolah-demo';
+        
+        const appFirebase = initializeApp(firebaseConfig);
+        const auth = getAuth(appFirebase);
+        const db = getFirestore(appFirebase);
+        // setLogLevel('debug');
+
+        // === Variabel Global Aplikasi ===
+        let currentUser = null;
+        let userProfile = null;
+        let unsubscribeUserProfile = null;
+        let unsubscribeMessages = null;
+        let unsubscribeMaterials = null;
+        let unsubscribeBorrowedBooks = null;
+        let unsubscribeAdminNotifications = null;
+        let isLoggingOut = false; // Flag to prevent auto-relogin
+        let clockInterval = null;
+        let clickSynth, popSynth, chimeSynth;
+
+
+        // === Simulasi data pengguna (untuk validasi login saja) ===
+        const users = {
+            siswa: { username: 'siswa', password: '123', name: 'Budi Santoso' },
+            guru: { username: 'guru', password: '456', name: 'Dra. Hj. Euis Komariah' },
+            admin: { username: 'admin', password: '789', name: 'Admin SMANIDA' }
+        };
+        
+        // === Data Dummy untuk Fitur Admin ===
+        const students = [ 
+            { id: '1001', name: 'Siti Nurhaliza', class: '11 MIPA 3', nisn: '0051234588', address: 'Jl. Ciherang, Dramaga', parent: 'Bpk. Abdullah' }, 
+            { id: '1002', name: 'Bambang Pamungkas', class: '12 IPS 1', nisn: '0041234599', address: 'Komp. IPB, Dramaga', parent: 'Ibu Wati' },
+            { id: '1101', name: 'Raisa Andriana', class: '10-F', nisn: '0061234511', address: 'Jl. Babakan Lebak', parent: 'Bpk. Andri' },
+            { id: '1201', name: 'Iqbal Ramadhan', class: '11 MIPA 1', nisn: '0051234522', address: 'Jl. Raya Laladon', parent: 'Bpk. Herry'}
+        ];
+        const staff = [ 
+            { id: 'KS01', name: 'Drs. H. Suryana, M.Pd.', role: 'Kepala Sekolah' }, 
+            { id: 'T01', name: 'Dra. Hj. Euis Komariah', role: 'Guru Matematika' }, 
+            { id: 'T02', name: 'Asep Sunandar, S.Pd.', role: 'Guru Olahraga' },
+            { id: 'T03', name: 'Siti Badriah, S.S.', role: 'Guru Bahasa Inggris' },
+            { id: 'S01', name: 'Agus Salim', role: 'Staf Tata Usaha' },
+            { id: 'S02', name: 'Rina Herawati', role: 'Staf Perpustakaan' }
+        ];
+        const accounts = [ 
+            { username: 'siswa', role: 'Siswa', lastLogin: '08/10/2025 07:30' }, 
+            { username: 'guru', role: 'Guru', lastLogin: '08/10/2025 06:15' },
+            { username: 'admin', role: 'Admin', lastLogin: '07/10/2025 17:00' }
+        ];
+        const payments = [ { studentId: '1001', name: 'Alya Rohali', status: 'Lunas', date: '01/10/2025' }, { studentId: '1002', name: 'Bintang Gemilang', status: 'Belum Lunas', date: '-' }, { studentId: '1101', name: 'Cantika Dewi', status: 'Lunas', date: '03/10/2025' }];
+        const reports = [ 
+            { id: 'R01', name: 'Laporan SPP Bulan September', date: '01/10/2025', by: 'Admin' }, 
+            { id: 'R02', name: 'Laporan Dana BOS Triwulan 3', date: '05/10/2025', by: 'Admin' }
+        ];
+        const analyses = [ 
+            { id: 'A01', name: 'Analisis Nilai Rata-rata per Kelas', status: 'Selesai' }, 
+            { id: 'A02', name: 'Analisis Tingkat Kehadiran', status: 'Sedang Berlangsung' }
+        ];
+        const schoolAnnouncements = [
+            { title: 'Informasi Pelaksanaan Penilaian Akhir Semester (PAS)', date: '5 Oktober 2025', content: 'Diberitahukan kepada seluruh siswa bahwa PAS Ganjil akan dilaksanakan mulai tanggal 2 Desember hingga 10 Desember 2025. Harap mempersiapkan diri dan melunasi administrasi.'},
+            { title: 'Kegiatan Class Meeting Semester Ganjil', date: '1 Oktober 2025', content: 'Akan diadakan kegiatan Class Meeting setelah PAS selesai, pada tanggal 11-13 Desember 2025. Setiap kelas wajib mengirimkan perwakilannya untuk setiap cabang lomba.'},
+            { title: 'Penerimaan Rapor Semester Ganjil', date: '28 September 2025', content: 'Pembagian rapor semester ganjil akan dilaksanakan pada hari Jumat, 20 Desember 2025. Orang tua/wali murid diharapkan kehadirannya.'},
+        ];
+
+        // === Elemen DOM ===
+        const loginPage = document.getElementById('login-page');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const loginButton = loginForm.querySelector('button[type="submit"]');
+        const loginButtonText = loginButton.querySelector('.login-text');
+        const loginSpinner = loginButton.querySelector('.login-spinner');
+        const app = document.getElementById('app');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfo = document.getElementById('user-info');
+        const appHeader = document.getElementById('app-header');
+        const liveClock = document.getElementById('live-clock');
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationDot = document.getElementById('notification-dot');
+        const notificationDropdown = document.getElementById('notification-dropdown');
+        const notificationList = document.getElementById('notification-list');
+        
+        const modalContainers = {
+            feature: document.getElementById('feature-modal'),
+            gemini: document.getElementById('gemini-modal'),
+            confirmation: document.getElementById('confirmation-modal')
+        };
+
+        const dashboards = {
+            siswa: document.getElementById('siswa-dashboard'),
+            guru: document.getElementById('guru-dashboard'),
+            admin: document.getElementById('admin-dashboard')
+        };
+        
+        // === Fungsi Inisialisasi Aplikasi ===
+        function initApp() {
+            initBackgroundAnimation();
+            addEventListeners();
+            updateLoginButtonState(true, 'Menghubungkan...', true);
+            handleAuth();
+        }
+        
+        async function seedInitialBooks() {
+            try {
+                const booksRef = collection(db, 'artifacts', appId, 'public', 'data', 'library_books');
+                const q = query(booksRef, limit(1));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    console.log("Perpustakaan kosong. Mengisi dengan buku awal...");
+                    const initialBooks = [
+                        { title: 'Matematika SMA Kelas X', author: 'Kemendikbud', category: 'Pelajaran' },
+                        { title: 'Dasar-Dasar Fisika Jilid 1', author: 'Halliday, Resnick, Walker', category: 'Pelajaran' },
+                        { title: 'Laskar Pelangi', author: 'Andrea Hirata', category: 'Novel Fiksi' },
+                        { title: 'Bumi Manusia', author: 'Pramoedya Ananta Toer', category: 'Novel Sejarah' },
+                        { title: 'Sapiens: Riwayat Singkat Umat Manusia', author: 'Yuval Noah Harari', category: 'Non-Fiksi' },
+                        { title: 'Atomic Habits', author: 'James Clear', category: 'Pengembangan Diri' },
+                    ];
+
+                    const promises = initialBooks.map(book => addDoc(booksRef, book));
+                    await Promise.all(promises);
+                    console.log("Buku awal berhasil ditambahkan.");
+                }
+            } catch(e) {
+                 console.error("Gagal memeriksa atau menambahkan buku awal: ", e);
+            }
+        }
+
+
+        function showDashboard(role) {
+            Object.values(dashboards).forEach(dash => dash.style.display = 'none');
+            if (dashboards[role]) {
+                dashboards[role].style.display = 'block';
+            }
+        }
+
+        function setupAppUI(user, profile) {
+            currentUser = user;
+            userProfile = profile;
+            
+            if (!user || !profile || !profile.role) { 
+                resetAppUI();
+                return;
+            }
+
+            loginPage.classList.add('hidden');
+            app.classList.remove('hidden');
+            showDashboard(profile.role);
+            
+            const roleName = profile.role.charAt(0).toUpperCase() + profile.role.slice(1);
+            userInfo.innerHTML = `
+                <p class="font-semibold text-indigo-800">${profile.name}</p>
+                <p class="text-xs text-slate-500">${roleName}</p>
+            `;
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            let greeting;
+            if (currentHour < 12) greeting = "Selamat Pagi";
+            else if (currentHour < 18) greeting = "Selamat Siang";
+            else greeting = "Selamat Malam";
+            const welcomeText = `${greeting}, ${profile.name}!`;
+
+            document.getElementById(`welcome-message-${profile.role}`).textContent = welcomeText;
+
+            if(clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(updateClock, 1000);
+            updateClock();
+            
+            if(profile.role === 'admin') {
+                document.getElementById('total-students-stat').textContent = '1296';
+                document.getElementById('total-staff-stat').textContent = '85';
+                document.getElementById('total-announcements-stat').textContent = schoolAnnouncements.length;
+            }
+            setupRoleSpecificListeners(profile.role);
+        }
+        
+        function resetAppUI() {
+            loginPage.classList.remove('hidden');
+            app.classList.add('hidden');
+            currentUser = null;
+            userProfile = null;
+            
+            // Set tombol ke status menunggu, bukan langsung bisa diklik
+            updateLoginButtonState(true, 'Menunggu Sesi...', true);
+
+            if(clockInterval) clearInterval(clockInterval);
+            liveClock.classList.add('hidden');
+            
+            if (unsubscribeUserProfile) unsubscribeUserProfile();
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeMaterials) unsubscribeMaterials();
+            if (unsubscribeBorrowedBooks) unsubscribeBorrowedBooks();
+            if (unsubscribeAdminNotifications) unsubscribeAdminNotifications();
+            unsubscribeUserProfile = null;
+            unsubscribeMessages = null;
+            unsubscribeMaterials = null;
+            unsubscribeBorrowedBooks = null;
+            unsubscribeAdminNotifications = null;
+        }
+
+        // === Logika Autentikasi ===
+        function updateLoginButtonState(isConnecting, text, isDisabled) {
+            loginButton.disabled = isDisabled;
+            loginButtonText.textContent = text;
+            if (isConnecting) {
+                loginButtonText.classList.add('hidden');
+                loginSpinner.classList.remove('hidden');
+            } else {
+                loginButtonText.classList.remove('hidden');
+                loginSpinner.classList.add('hidden');
+            }
+        }
+        
+        function handleAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (unsubscribeUserProfile) unsubscribeUserProfile();
+
+                if (user) {
+                    currentUser = user;
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid);
+
+                    unsubscribeUserProfile = onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            // Pengguna memiliki profil, artinya sudah login
+                            const profile = docSnap.data();
+                            if (!userProfile || userProfile.name !== profile.name) {
+                                setupAppUI(user, profile);
+                            }
+                        } else {
+                            // Pengguna anonim tanpa profil, atau baru saja logout
+                            resetAppUI();
+                             // Sekarang sesi anonim sudah siap, aktifkan tombol Masuk
+                            updateLoginButtonState(false, "Masuk", false);
+                        }
+                    }, (error) => {
+                        console.error("Error pada snapshot profil pengguna:", error);
+                        resetAppUI(); // Kembali ke login jika ada error
+                    });
+
+                    if (!localStorage.getItem('initialDataSeeded')) {
+                        seedInitialBooks();
+                        localStorage.setItem('initialDataSeeded', 'true');
+                    }
+                } else {
+                    // Tidak ada pengguna sama sekali (awal & setelah logout)
+                    resetAppUI();
+                    if (isLoggingOut) {
+                        isLoggingOut = false;
+                        // Tunggu proses sign-in anonim di bawah
+                    }
+                    (async () => {
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            // Setelah sign-in, onAuthStateChanged akan berjalan lagi
+                        } catch (error) {
+                            console.error("Gagal sign-in anonim:", error);
+                            updateLoginButtonState(false, "Gagal Terhubung", true);
+                            loginError.textContent = "Gagal terhubung ke layanan. Coba muat ulang.";
+                            loginError.classList.remove('hidden');
+                        }
+                    })();
+                }
+            });
+        }
+        
+        // === Event Listeners ===
+        function addEventListeners() {
+            document.body.addEventListener('click', initSounds, { once: true });
+
+            loginForm.addEventListener('submit', handleLogin);
+            logoutBtn.addEventListener('click', () => {
+                playClickSound();
+                openConfirmationModal('Konfirmasi Keluar', 'Apakah Anda yakin ingin keluar dari akun Anda?', performLogout);
+            });
+            
+            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                playClickSound();
+                const content = `
+                    <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                    <h3 class="text-xl font-bold mb-4">Lupa Password</h3>
+                    <p class="text-slate-600">Untuk mereset password Anda, silakan hubungi bagian administrasi sekolah.</p>
+                `;
+                openModal(modalContainers.feature, content);
+            });
+
+            window.addEventListener('scroll', () => appHeader.classList.toggle('scrolled', window.scrollY > 0));
+            notificationBtn.addEventListener('click', (e) => {
+                playClickSound();
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('hidden');
+                notificationDot.classList.add('hidden'); 
+            });
+            document.addEventListener('click', (e) => {
+                if (!notificationDropdown.classList.contains('hidden') && !notificationBtn.contains(e.target)) {
+                    notificationDropdown.classList.add('hidden');
+                }
+            });
+            
+            Object.values(modalContainers).forEach(modal => {
+                 modal.addEventListener('click', (e) => {
+                    if (e.target === modal || e.target.classList.contains('close-modal-btn')) {
+                        closeModal(modal);
+                    }
+                });
+            });
+            modalContainers.confirmation.querySelector('#cancel-btn').addEventListener('click', () => closeModal(modalContainers.confirmation));
+
+            document.querySelectorAll('[id^="open-"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    playClickSound();
+                    const feature = btn.id.replace('open-', '').replace('-btn', '');
+                    switch(feature) {
+                        case 'study-assistant': 
+                            setupGeminiModal('✨ Asisten Belajar Cerdas', 'Apa yang ingin kamu tanyakan atau pelajari?', 'Tanya Sekarang', 'Contoh: "Jelaskan proses fotosintesis secara sederhana."', 'Anda adalah asisten belajar yang ramah untuk siswa SMA. Jelaskan konsep dengan cara yang mudah dipahami, singkat, dan jelas.'); break;
+                        case 'summarizer':
+                            setupGeminiModal('✨ Rangkum Materi', 'Tempelkan teks materi di sini:', 'Buat Rangkuman', 'Salin dan tempel teks dari artikel, PDF, atau catatan Anda di sini...', 'Anda adalah ahli dalam merangkum teks. Buat rangkuman yang padat dan jelas dari teks yang diberikan, fokus pada poin-poin utama.'); break;
+                        case 'practice-quiz':
+                            setupGeminiModal('📝 Latihan Soal', 'Topik apa yang ingin kamu jadikan latihan?', 'Buat Soal Latihan', 'Contoh: "Buatkan 3 soal esai tentang Kerajaan Majapahit."', `Anda adalah seorang guru yang ahli membuat soal. Buatlah soal berdasarkan permintaan pengguna. Format output harus dalam bentuk Markdown yang rapi, dengan soal yang diberi nomor. JANGAN sertakan kunci jawaban.`); break;
+                        case 'quiz-generator':
+                            setupGeminiModal('📝 Generator Soal Cerdas', 'Topik dan jenis soal apa yang ingin Anda buat?', 'Buat Soal', 'Contoh: "Buatkan 5 soal pilihan ganda tentang Perang Dunia I untuk kelas 11."', `Anda adalah seorang guru yang ahli membuat soal. Buatlah soal berdasarkan permintaan pengguna. Format output harus dalam bentuk Markdown yang rapi, dengan soal yang diberi nomor dan pilihan ganda (jika ada). Sertakan kunci jawaban di bagian paling akhir dengan format "KUNCI JAWABAN:" diikuti daftar jawaban.`); break;
+                        case 'announcement-generator':
+                             setupGeminiModal('✨ Draf Pengumuman Kelas', 'Masukkan poin-poin penting untuk pengumuman:', 'Buat Draf', 'Contoh:\n- Pengumpulan tugas Matematika\n- Deadline: Jumat ini jam 3 sore\n- Kumpulkan di meja saya', 'Anda adalah seorang guru. Ubah poin-poin berikut menjadi draf pengumuman yang jelas, singkat, dan sopan untuk siswa di grup kelas.'); break;
+                        case 'content-center':
+                            openContentCenterModal(); break;
+                    }
+                });
+            });
+            
+            const featureButtons = {
+                'view-grades-btn': openGradesModal,
+                'teacher-schedule-btn': openTeacherScheduleModal,
+                'upload-material-btn': openUploadMaterialModal,
+                'view-materials-btn': openMaterialsModal,
+                'message-board-btn': openMessageBoard,
+                'teacher-message-board-btn': openMessageBoard,
+                'calendar-btn': openCalendarModal,
+                'library-btn': openLibraryModal,
+                'manage-library-btn': openLibraryManagementModal,
+                'events-btn': openEventsModal,
+                'class-management-btn': openClassManagementModal,
+                'announcements-btn': openAnnouncementsModal,
+                'teacher-announcements-btn': openAnnouncementsModal,
+            };
+            Object.keys(featureButtons).forEach(id => {
+                const btn = document.getElementById(id);
+                if(btn) {
+                    btn.addEventListener('click', () => {
+                        playClickSound();
+                        featureButtons[id]();
+                    });
+                }
+            });
+
+            document.querySelectorAll('.admin-feature-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    playClickSound();
+                    const feature = e.currentTarget.dataset.feature;
+                    if (feature === 'manage-library') openLibraryManagementModal();
+                    else openAdminFeatureModal(feature);
+                });
+            });
+        }
+        
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = e.target.username.value;
+            const password = e.target.password.value;
+            const role = e.target.role.value;
+            
+            loginError.classList.add('hidden');
+
+            if (auth.currentUser && users[role] && users[role].username === username && users[role].password === password) {
+                const profileToSave = { 
+                    ...users[role],
+                    role
+                };
+
+                // Pembaruan UI Instan: Langsung tampilkan dasbor tanpa jeda.
+                setupAppUI(auth.currentUser, profileToSave);
+
+                // Sinkronisasi Latar Belakang: Simpan profil ke Firestore di latar belakang.
+                (async () => {
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid);
+                    try {
+                        await setDoc(userDocRef, profileToSave);
+                    } catch (error) {
+                        // Jika penyimpanan gagal, catat error dan paksa logout untuk menjaga konsistensi.
+                        console.error("Gagal menyimpan profil di latar belakang:", error);
+                        performLogout(); 
+                    }
+                })();
+
+            } else {
+                // Tampilkan error secara instan jika login gagal.
+                loginError.textContent = "Username atau password salah.";
+                if (!auth.currentUser) {
+                    loginError.textContent = "Sesi autentikasi tidak siap. Silakan coba lagi.";
+                }
+                loginError.classList.remove('hidden');
+            }
+        }
+
+        async function performLogout() {
+            try {
+                isLoggingOut = true;
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
+                await deleteDoc(userDocRef); // Hapus profil "login"
+                await signOut(auth); // Keluar dari Firebase Auth
+            } catch (error) {
+                console.error('Error signing out: ', error);
+                isLoggingOut = false; 
+            }
+        }
+        
+        // === Logika Fitur Utama ===
+
+        function updateClock() {
+            liveClock.classList.remove('hidden');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            liveClock.textContent = timeString;
+        }
+
+        function initSounds() {
+            if (!clickSynth && window.Tone) {
+                // Suara klik yang modern dan singkat
+                clickSynth = new Tone.Synth({
+                    oscillator: { type: 'fmsine', modulationType: 'sine', harmonicity: 1.2 },
+                    envelope: { attack: 0.001, decay: 0.1, sustain: 0.01, release: 0.05 },
+                    volume: -20
+                }).toDestination();
+
+                // Suara "pop" yang lebih lembut untuk membuka modal
+                popSynth = new Tone.MembraneSynth({
+                    pitchDecay: 0.01,
+                    octaves: 2.5,
+                    envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.2 },
+                    volume: -10
+                }).toDestination();
+
+                // Suara notifikasi yang lebih jernih dan seperti lonceng kaca
+                chimeSynth = new Tone.MetalSynth({
+                    frequency: 400,
+                    envelope: { attack: 0.001, decay: 0.6, release: 0.2 },
+                    harmonicity: 7.1,
+                    modulationIndex: 20,
+                    resonance: 2500,
+                    octaves: 1.5,
+                    volume: -15
+                }).toDestination();
+
+                Tone.start();
+            }
+        }
+        function playClickSound() { if (clickSynth && Tone.context.state === 'running') clickSynth.triggerAttackRelease("C5", "50n"); }
+        function playPopSound() { if (popSynth && Tone.context.state === 'running') popSynth.triggerAttackRelease("C2", "8n"); }
+        function playChimeSound() { if(chimeSynth && Tone.context.state === 'running') chimeSynth.triggerAttack("G5", "+0.05", 0.5); }
+        
+        function setupRoleSpecificListeners(role) {
+            // Unsubscribe from previous listeners to avoid duplicates
+            if (unsubscribeMaterials) unsubscribeMaterials();
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeAdminNotifications) unsubscribeAdminNotifications();
+            allNotifications = {};
+
+            // Main profile listener is now in handleAuth to prevent race conditions
+
+            if (role === 'siswa') {
+                const materialQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'materials'), orderBy('createdAt', 'desc'), limit(5));
+                const messageQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), orderBy('timestamp', 'desc'), limit(5));
+                unsubscribeMaterials = onSnapshot(materialQuery, (snapshot) => updateNotifications(snapshot, 'materi'));
+                unsubscribeMessages = onSnapshot(messageQuery, (snapshot) => updateNotifications(snapshot, 'pesan'));
+            } else if (role === 'admin') {
+                const adminNotifQuery = query(collection(db, 'artifacts', appId, 'public', 'data', 'admin_notifications'), orderBy('timestamp', 'desc'), limit(10));
+                unsubscribeAdminNotifications = onSnapshot(adminNotifQuery, (snapshot) => updateNotifications(snapshot, 'admin_borrow'));
+            }
+        }
+        
+        let allNotifications = {};
+        let firstLoad = true;
+        function updateNotifications(snapshot, type) {
+            if (!firstLoad && snapshot.docChanges().some(change => change.type === 'added')) playChimeSound();
+            
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const id = doc.id;
+                if (type === 'materi') allNotifications[id] = { id, type: 'materi', title: `Materi Baru: ${data.title}`, subtitle: `Pelajaran ${data.subject} oleh ${data.uploader}.`, timestamp: data.createdAt };
+                else if (type === 'pesan') allNotifications[id] = { id, type: 'pesan', title: `Pesan Baru dari ${data.senderName}`, subtitle: data.content.substring(0, 50) + '...', timestamp: data.timestamp };
+                else if (type === 'admin_borrow') allNotifications[id] = { id, type: 'perpustakaan', title: `📚 Peminjaman Buku Baru`, subtitle: `${data.studentName} meminjam "${data.bookTitle}".`, timestamp: data.timestamp };
+            });
+
+            const sortedNotifications = Object.values(allNotifications).sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+
+            if (sortedNotifications.length > 0) {
+                 notificationDot.classList.remove('hidden');
+                 notificationList.innerHTML = sortedNotifications.map(notif => {
+                     const timeAgo = notif.timestamp ? formatTimeAgo(notif.timestamp.toDate()) : '';
+                     return `<a href="#" data-notif-type="${notif.type}" class="notification-item block p-3 hover:bg-gray-100">
+                            <p class="font-semibold text-sm">${notif.title}</p>
+                            <p class="text-xs text-slate-500">${notif.subtitle}</p>
+                            <p class="text-xs text-slate-500 text-right mt-1">${timeAgo}</p>
+                        </a>`;
+                 }).join('');
+                 notificationList.querySelectorAll('.notification-item').forEach(item => item.addEventListener('click', handleNotificationClick));
+            } else {
+                 notificationList.innerHTML = '<p class="p-4 text-sm text-center text-slate-500">Tidak ada notifikasi baru.</p>';
+                 notificationDot.classList.add('hidden');
+            }
+            firstLoad = false;
+        }
+        
+        function handleNotificationClick(e) {
+            e.preventDefault();
+            const type = e.currentTarget.dataset.notifType;
+            notificationDropdown.classList.add('hidden');
+            switch (type) {
+                case 'materi': openMaterialsModal(); break;
+                case 'pesan': openMessageBoard(); break;
+                case 'perpustakaan': 
+                    if(userProfile.role === 'admin') openLibraryManagementModal();
+                    else openLibraryModal();
+                    break;
+            }
+        }
+
+        function openMessageBoard() {
+             const isTeacherOrAdmin = userProfile.role === 'guru' || userProfile.role === 'admin';
+             let contentHTML = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Papan Pesan</h3>
+                <div id="messages-container" class="flex-grow h-96 bg-gray-100 rounded-lg p-4 overflow-y-auto flex flex-col-reverse mb-4">
+                    <div class="flex justify-center items-center h-full"><div class="spinner"></div></div>
+                </div>
+                ${isTeacherOrAdmin ? `
+                <form id="message-form" class="flex gap-2">
+                    <input type="text" id="message-input" placeholder="Ketik pesan atau pengumuman..." required class="flex-grow p-2 border rounded-lg bg-white border-gray-300">
+                    <button type="submit" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Kirim</button>
+                </form>
+                ` : ''}
+            `;
+            openModal(modalContainers.feature, contentHTML);
+            
+            if (isTeacherOrAdmin) {
+                modalContainers.feature.querySelector('#message-form').addEventListener('submit', handleSendMessage);
+            }
+
+            const messagesContainer = modalContainers.feature.querySelector('#messages-container');
+            const messagesColRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            const q = query(messagesColRef, orderBy('timestamp', 'desc'));
+
+            if (unsubscribeMessages) unsubscribeMessages();
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    messagesContainer.innerHTML = '<p class="text-center text-slate-500 m-auto">Belum ada pesan.</p>';
+                    return;
+                }
+                messagesContainer.innerHTML = snapshot.docs.map(doc => {
+                    const msg = doc.data();
+                    const isOwnMessage = msg.senderId === currentUser.uid;
+                    const date = msg.timestamp ? formatTimeAgo(msg.timestamp.toDate()) : '';
+                    return `<div class="flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-3">
+                            <div class="max-w-xs lg:max-w-md">
+                                <p class="text-xs text-slate-500 ${isOwnMessage ? 'text-right' : 'text-left'}">${msg.senderName}</p>
+                                <div class="p-3 rounded-lg ${isOwnMessage ? 'bg-indigo-500 text-white' : 'bg-white'}">
+                                    <p>${msg.content}</p>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}">${date}</p>
+                            </div>
+                        </div>`;
+                }).join('');
+            }, (error) => {
+                 console.error("Error listening to messages: ", error);
+                 messagesContainer.innerHTML = '<p class="text-center text-red-500 m-auto">Gagal memuat pesan.</p>';
+            });
+        }
+        
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            const input = modalContainers.feature.querySelector('#message-input');
+            const content = input.value.trim();
+            if (!content) return;
+
+            input.disabled = true;
+            try {
+                const messagesColRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+                await addDoc(messagesColRef, {
+                    senderId: currentUser.uid,
+                    senderName: userProfile.name,
+                    content: content,
+                    timestamp: serverTimestamp()
+                });
+                input.value = '';
+            } catch (error) {
+                console.error("Error sending message: ", error);
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
+        }
+        
+        async function openUploadMaterialModal() {
+            const content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Unggah Materi Baru</h3>
+                <form id="upload-material-form" class="space-y-4">
+                    <div>
+                        <label for="material-title" class="font-semibold">Judul Materi</label>
+                        <input type="text" id="material-title" name="title" required class="w-full mt-1 p-2 border rounded-lg bg-white border-gray-300">
+                    </div>
+                     <div>
+                        <label for="material-subject" class="font-semibold">Mata Pelajaran</label>
+                        <input type="text" id="material-subject" name="subject" required class="w-full mt-1 p-2 border rounded-lg bg-white border-gray-300">
+                    </div>
+                    <div>
+                        <label for="material-content" class="font-semibold">Isi Materi / Link</label>
+                        <textarea id="material-content" name="content" required rows="5" class="w-full mt-1 p-2 border rounded-lg resize-none bg-white border-gray-300"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-75">
+                        <span class="btn-text">Unggah Sekarang</span>
+                        <span class="btn-spinner hidden"><div class="spinner !w-5 !h-5 !border-2 !border-left-white"></div></span>
+                    </button>
+                </form>
+            `;
+            openModal(modalContainers.feature, content);
+            modalContainers.feature.querySelector('#upload-material-form').addEventListener('submit', handleUploadMaterial);
+        }
+        
+        async function handleUploadMaterial(e) {
+            e.preventDefault();
+            const form = e.target;
+            const button = form.querySelector('button');
+            const buttonText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.btn-spinner');
+            
+            button.disabled = true;
+            buttonText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+
+            try {
+                const materialsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'materials');
+                await addDoc(materialsColRef, {
+                    title: form.title.value,
+                    subject: form.subject.value,
+                    content: form.content.value,
+                    uploader: userProfile.name,
+                    uploaderId: currentUser.uid,
+                    createdAt: serverTimestamp()
+                });
+                closeModal(modalContainers.feature);
+            } catch (error) {
+                console.error("Error uploading material: ", error);
+                openConfirmationModal('Gagal', 'Gagal mengunggah materi. Silakan coba lagi.', () => {});
+                button.disabled = false;
+                buttonText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function openMaterialsModal() {
+            let contentHTML = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Materi Pelajaran</h3>
+                <div id="materials-list" class="space-y-4 overflow-y-auto pr-2 max-h-[70vh]">
+                    <div class="flex justify-center items-center h-48"><div class="spinner"></div></div>
+                </div>
+            `;
+            openModal(modalContainers.feature, contentHTML);
+            
+            try {
+                const materialsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'materials');
+                const q = query(materialsColRef, orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+                const materialsList = modalContainers.feature.querySelector('#materials-list');
+
+                if (querySnapshot.empty) {
+                    materialsList.innerHTML = '<p class="text-slate-500 text-center py-10">Belum ada materi yang diunggah.</p>';
+                    return;
+                }
+                
+                materialsList.innerHTML = querySnapshot.docs.map((doc) => {
+                    const data = doc.data();
+                    const date = data.createdAt?.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || 'Baru saja';
+                    return `<div class="bg-gray-100 p-4 rounded-lg">
+                            <p class="font-bold text-lg">${data.title}</p>
+                            <p class="text-sm text-indigo-600 font-semibold">${data.subject}</p>
+                            <p class="my-2 whitespace-pre-wrap">${data.content}</p>
+                            <p class="text-xs text-slate-500 text-right">Diunggah oleh ${data.uploader} pada ${date}</p>
+                        </div>`;
+                }).join('');
+            } catch (error) {
+                console.error("Error fetching materials: ", error);
+                modalContainers.feature.querySelector('#materials-list').innerHTML = '<p class="text-red-500 text-center py-10">Gagal memuat materi.</p>';
+            }
+        }
+
+        function openCalendarModal() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const today = date.getDate();
+            const schoolEvents = {
+                8: "Mulai Penilaian Tengah Semester (PTS)",
+                10: "Maulid Nabi Muhammad SAW",
+                28: "Peringatan Sumpah Pemuda"
+            };
+
+            let calendarGrid = Array(firstDayIndex).fill('<div></div>').join('');
+            for (let day = 1; day <= daysInMonth; day++) {
+                let classes = 'calendar-day';
+                if (day === today) classes += ' today';
+                if (schoolEvents[day]) classes += ' event';
+                calendarGrid += `<div class="${classes}" title="${schoolEvents[day] || ''}">${day}</div>`;
+            }
+
+            const content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Kalender Akademik - ${monthNames[month]} ${year}</h3>
+                <div class="grid grid-cols-7 gap-2 text-center font-semibold text-sm">
+                    ${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}
+                </div>
+                <div class="grid grid-cols-7 gap-2 mt-2">${calendarGrid}</div>
+                <div class="mt-4 text-sm"><p><span class="inline-block w-4 h-4 bg-yellow-400 rounded-full mr-2 align-middle"></span> Acara/Kegiatan</p></div>
+            `;
+            openModal(modalContainers.feature, content);
+        }
+        
+        function openClassManagementModal() {
+             const classStudents = ['Adinda Putri', 'Bagus Setiawan', 'Citra Lestari', 'Doni Hermawan', 'Eka Fitriani', 'Fajar Nugroho', 'Gita Gutawa', 'Hendra Gunawan'];
+             let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Absensi Kelas 11 MIPA 1</h3>
+                <p class="text-sm text-slate-500 mb-4">Tanggal: 8 Oktober 2025</p>
+                <div class="overflow-y-auto max-h-96">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-100"><tr><th class="p-3">Nama Siswa</th><th class="p-3 text-center">Kehadiran</th></tr></thead>
+                        <tbody>${classStudents.map(name => `
+                            <tr class="border-b">
+                                <td class="p-3">${name}</td>
+                                <td class="p-3 text-center">
+                                    <select class="attendance-select">
+                                        <option value="Hadir" selected>Hadir</option>
+                                        <option value="Izin">Izin</option>
+                                        <option value="Sakit">Sakit</option>
+                                        <option value="Alfa">Alfa</option>
+                                    </select>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <button id="save-attendance-btn" class="mt-4 w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700">Simpan Absensi</button>
+            `;
+            openModal(modalContainers.feature, content);
+            document.getElementById('save-attendance-btn').addEventListener('click', () => {
+                playClickSound();
+                openConfirmationModal('Sukses', 'Data absensi telah berhasil disimpan.', () => {});
+            });
+        }
+
+        function openAnnouncementsModal() {
+            let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Pengumuman Sekolah</h3>
+                <div class="overflow-y-auto max-h-[75vh] space-y-4">
+                     ${schoolAnnouncements.map(item => `
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <p class="font-bold">${item.title}</p>
+                        <p class="text-xs text-slate-500 mb-2">${item.date}</p>
+                        <p class="text-sm">${item.content}</p>
+                    </div>`).join('')}
+                </div>`;
+            openModal(modalContainers.feature, content);
+        }
+
+        function openModal(modalElement, contentHTML) {
+            playPopSound();
+            const contentContainer = modalElement.querySelector('div[id$="-content"]');
+            contentContainer.innerHTML = contentHTML;
+            modalElement.classList.remove('hidden');
+            void modalElement.offsetWidth;
+            modalElement.classList.add('opacity-100');
+        }
+
+        function closeModal(modalElement) {
+            modalElement.classList.remove('opacity-100');
+            setTimeout(() => {
+                modalElement.classList.add('hidden');
+            }, 300);
+        }
+        
+        function openConfirmationModal(title, message, onConfirm) {
+            playPopSound();
+            const modal = modalContainers.confirmation;
+            modal.querySelector('#confirmation-title').textContent = title;
+            modal.querySelector('#confirmation-message').textContent = message;
+            
+            const confirmBtn = modal.querySelector('#confirm-btn');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = 'Ya'; 
+            
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', async () => {
+                newConfirmBtn.disabled = true;
+                newConfirmBtn.innerHTML = `<div class="spinner !w-5 !h-5 !border-2 !border-left-white mx-auto"></div>`;
+                
+                try {
+                    await onConfirm();
+                } catch (error) {
+                    console.error("Terjadi eror saat konfirmasi:", error);
+                } finally {
+                    closeModal(modal);
+                }
+            });
+            
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.add('opacity-100');
+        }
+
+        function openGradesModal() {
+            const grades = [
+                { subject: 'Matematika Wajib', score: 92, grade: 'A' }, { subject: 'Bahasa Indonesia', score: 88, grade: 'A-' },
+                { subject: 'Bahasa Inggris', score: 85, grade: 'B+' }, { subject: 'Fisika', score: 90, grade: 'A' },
+                { subject: 'Kimia', score: 86, grade: 'B+' }, { subject: 'Biologi', score: 95, grade: 'A' },
+            ];
+             let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Nilai Semester Ganjil</h3>
+                <div class="overflow-y-auto max-h-[75vh]">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-100"><tr><th class="p-3">Mata Pelajaran</th><th class="p-3 text-center">Nilai Akhir</th><th class="p-3 text-center">Predikat</th></tr></thead>
+                        <tbody>${grades.map(g => `<tr class="border-b"><td class="p-3 font-semibold">${g.subject}</td><td class="p-3 text-center text-lg font-bold ${g.score >= 90 ? 'text-green-600' : 'text-blue-600'}">${g.score}</td><td class="p-3 text-center font-semibold">${g.grade}</td></tr>`).join('')}</tbody>
+                    </table>
+                </div>
+                <button id="download-report-btn" class="mt-4 w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700">Unduh Rapor (PDF)</button>`;
+            openModal(modalContainers.feature, content);
+            document.getElementById('download-report-btn').addEventListener('click', () => {
+                simulateDownload('Rapor_Semester_Ganjil.pdf');
+            });
+        }
+        
+        function openTeacherScheduleModal() {
+            const schedule = {
+                'Senin': '07:00-08:30 (11 MIPA 1), 09:00-10:30 (11 MIPA 2)', 'Selasa': '10:30-12:00 (12 IPS 1)',
+                'Rabu': '07:00-08:30 (11 MIPA 1)', 'Kamis': '09:00-10:30 (12 IPS 1)', 'Jumat': 'Libur Mengajar',
+            };
+             let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Jadwal Mengajar Minggu Ini</h3>
+                 <div class="space-y-3">${Object.entries(schedule).map(([day, time]) => `<div class="p-3 bg-gray-100 rounded-lg"><p class="font-bold">${day}</p><p class="text-sm">${time}</p></div>`).join('')}</div>`;
+            openModal(modalContainers.feature, content);
+        }
+
+        async function openLibraryModal() {
+            let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Perpustakaan Digital</h3>
+                <input type="search" id="library-search" class="w-full p-2 border rounded-lg mb-4" placeholder="Cari buku berdasarkan judul atau penulis...">
+                <div id="library-list" class="overflow-y-auto max-h-[65vh]"><div class="flex justify-center items-center h-48"><div class="spinner"></div></div></div>`;
+            openModal(modalContainers.feature, content);
+            
+            const libraryListContainer = modalContainers.feature.querySelector('#library-list');
+            const searchInput = modalContainers.feature.querySelector('#library-search');
+
+            try {
+                const booksRef = collection(db, 'artifacts', appId, 'public', 'data', 'library_books');
+                const booksQuery = query(booksRef, orderBy('title'));
+                const booksSnapshot = await getDocs(booksQuery);
+                const allBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const renderBooks = (booksToRender, borrowedBookIds) => {
+                     if (booksToRender.length === 0) {
+                        libraryListContainer.innerHTML = '<p class="text-center text-slate-500">Buku tidak ditemukan atau belum ada di perpustakaan.</p>'; return;
+                    }
+                    libraryListContainer.innerHTML = booksToRender.map(book => {
+                        const isBorrowed = borrowedBookIds.has(book.id);
+                        return `<div class="bg-gray-100 p-4 rounded-lg mb-3">
+                            <p class="font-bold">${book.title}</p>
+                            <p class="text-sm text-slate-600">${book.author}</p>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full">${book.category}</span>
+                                <button data-book-id="${book.id}" data-action="${isBorrowed ? 'return' : 'borrow'}" class="borrow-btn ${isBorrowed ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'} text-white text-sm font-semibold py-1 px-3 rounded-lg">
+                                    ${isBorrowed ? 'Kembalikan' : 'Pinjam'}
+                                </button>
+                            </div></div>`;
+                    }).join('');
+                    libraryListContainer.querySelectorAll('.borrow-btn').forEach(btn => btn.addEventListener('click', handleBorrowOrReturnBook));
+                };
+                
+                const borrowedBooksRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'borrowed_books');
+                if(unsubscribeBorrowedBooks) unsubscribeBorrowedBooks();
+                unsubscribeBorrowedBooks = onSnapshot(borrowedBooksRef, (borrowedSnapshot) => {
+                    const borrowedBookIds = new Set(borrowedSnapshot.docs.map(doc => doc.id));
+                    renderBooks(allBooks, borrowedBookIds); // Initial render
+                    
+                    searchInput.addEventListener('input', (e) => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        const filteredBooks = allBooks.filter(book => 
+                            book.title.toLowerCase().includes(searchTerm) || 
+                            book.author.toLowerCase().includes(searchTerm)
+                        );
+                        renderBooks(filteredBooks, borrowedBookIds);
+                    });
+                });
+
+            } catch (error) {
+                console.error("Error fetching library books:", error);
+                libraryListContainer.innerHTML = '<p class="text-center text-red-500">Gagal memuat daftar buku.</p>';
+            }
+        }
+
+        async function handleBorrowOrReturnBook(e) {
+            playClickSound();
+            const button = e.currentTarget;
+            const bookId = button.dataset.bookId;
+            const action = button.dataset.action;
+            if (!currentUser || !bookId) return;
+            button.disabled = true;
+
+            const borrowedBookRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'borrowed_books', bookId);
+
+            try {
+                if (action === 'borrow') {
+                    await setDoc(borrowedBookRef, { borrowedAt: serverTimestamp() });
+                    try {
+                        const bookRef = doc(db, 'artifacts', appId, 'public', 'data', 'library_books', bookId);
+                        const bookSnap = await getDoc(bookRef);
+                        if (bookSnap.exists()) {
+                            const bookData = bookSnap.data();
+                            const adminNotificationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'admin_notifications');
+                            await addDoc(adminNotificationsRef, {
+                                type: 'book_borrowal', studentName: userProfile.name, studentId: currentUser.uid,
+                                bookTitle: bookData.title, timestamp: serverTimestamp(), read: false
+                            });
+                        }
+                    } catch (notifError) { console.error("Gagal membuat notifikasi admin:", notifError); }
+                } else { await deleteDoc(borrowedBookRef); }
+            } catch (error) { console.error(`Error ${action}ing book:`, error); }
+        }
+        
+        async function openLibraryManagementModal() {
+             let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Kelola Perpustakaan</h3>
+                <div class="bg-gray-100 p-4 rounded-lg mb-6">
+                    <h4 class="font-semibold mb-2">Tambah Buku Baru</h4>
+                    <form id="add-book-form" class="space-y-3">
+                         <input type="text" name="title" placeholder="Judul Buku" required class="w-full p-2 border rounded-lg bg-white">
+                         <input type="text" name="author" placeholder="Penulis" required class="w-full p-2 border rounded-lg bg-white">
+                         <input type="text" name="category" placeholder="Kategori" required class="w-full p-2 border rounded-lg bg-white">
+                         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Tambah Buku</button>
+                    </form>
+                </div>
+                <input type="search" id="library-manage-search" class="w-full p-2 border rounded-lg mb-4" placeholder="Cari buku untuk dihapus...">
+                <div id="library-management-list" class="overflow-y-auto max-h-[40vh]"><div class="flex justify-center items-center h-32"><div class="spinner"></div></div></div>`;
+            openModal(modalContainers.feature, content);
+            modalContainers.feature.querySelector('#add-book-form').addEventListener('submit', handleAddBook);
+            
+            const listContainer = modalContainers.feature.querySelector('#library-management-list');
+            const searchInput = modalContainers.feature.querySelector('#library-manage-search');
+            
+            const booksRef = collection(db, 'artifacts', appId, 'public', 'data', 'library_books');
+            const q = query(booksRef, orderBy('title'));
+
+            const renderManagementList = (books) => {
+                if (books.length === 0) { listContainer.innerHTML = '<p class="text-center text-slate-500">Buku tidak ditemukan.</p>'; return; }
+                listContainer.innerHTML = '<h4 class="font-semibold mb-2">Daftar Buku Saat Ini</h4>' + books.map(book => `
+                    <div class="p-2 bg-white rounded-md mb-2 flex justify-between items-center border">
+                        <div>
+                            <p class="font-semibold">${book.title}</p>
+                            <p class="text-sm text-slate-500">${book.author}</p>
+                        </div>
+                        <button data-book-id="${book.id}" data-book-title="${book.title}" class="delete-book-btn text-red-500 hover:text-red-700 p-2 rounded-full"><i class="fas fa-trash"></i></button>
+                    </div>`).join('');
+                
+                listContainer.querySelectorAll('.delete-book-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const { bookId, bookTitle } = e.currentTarget.dataset;
+                        openConfirmationModal('Hapus Buku', `Apakah Anda yakin ingin menghapus "${bookTitle}" dari perpustakaan?`, () => handleDeleteBook(bookId));
+                    });
+                });
+            };
+
+            onSnapshot(q, (snapshot) => {
+                const allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderManagementList(allBooks);
+                searchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const filteredBooks = allBooks.filter(book => 
+                        book.title.toLowerCase().includes(searchTerm) || 
+                        book.author.toLowerCase().includes(searchTerm)
+                    );
+                    renderManagementList(filteredBooks);
+                });
+            });
+        }
+
+        async function handleDeleteBook(bookId) {
+            playClickSound();
+            const bookRef = doc(db, 'artifacts', appId, 'public', 'data', 'library_books', bookId);
+            try {
+                await deleteDoc(bookRef);
+            } catch (error) {
+                console.error("Error deleting book: ", error);
+            }
+        }
+
+        async function handleAddBook(e) {
+            e.preventDefault();
+            const form = e.target;
+            const button = form.querySelector('button');
+            const originalButtonText = "Tambah Buku";
+            button.disabled = true; button.textContent = 'Menambahkan...';
+            
+            try {
+                const booksRef = collection(db, 'artifacts', appId, 'public', 'data', 'library_books');
+                await addDoc(booksRef, { title: form.title.value, author: form.author.value, category: form.category.value });
+                form.reset();
+                button.classList.replace('bg-indigo-600', 'bg-green-600'); button.textContent = 'Berhasil!';
+            } catch (error) {
+                console.error("Error adding book: ", error);
+                button.classList.replace('bg-indigo-600', 'bg-red-600'); button.textContent = 'Gagal!';
+            } finally {
+                setTimeout(() => {
+                    button.disabled = false; button.textContent = originalButtonText;
+                    button.classList.remove('bg-green-600', 'bg-red-600'); button.classList.add('bg-indigo-600');
+                }, 2000);
+            }
+        }
+
+        function openEventsModal() {
+            const events = [
+                { id: 'E01', title: 'Lomba Cerdas Cermat Antar Kelas', date: '20 Oktober 2025', type: 'Lomba', detail: 'Lomba Cerdas Cermat tahunan akan kembali diadakan. Setiap kelas wajib mengirimkan satu tim. Pendaftaran ditutup tanggal 15 Oktober. Hubungi OSIS untuk info lebih lanjut.' }, 
+                { id: 'E02', title: 'Class Meeting Akhir Semester', date: '1-5 Desember 2025', type: 'Acara', detail: 'Mari ramaikan Class Meeting dengan berbagai lomba olahraga dan seni. Tunjukkan bakat dan sportivitasmu!' },
+                { id: 'E03', title: 'Peringatan Hari Guru Nasional', date: '25 November 2025', type: 'Acara', detail: 'Akan diadakan upacara bendera khusus untuk memperingati Hari Guru. Seluruh siswa diharapkan menggunakan seragam OSIS lengkap.' }, 
+                { id: 'E04', title: 'Olimpiade Sains Nasional (OSN) Tingkat Sekolah', date: '15 November 2025', type: 'Lomba', detail: 'Seleksi tingkat sekolah untuk OSN akan diadakan di Laboratorium Fisika. Segera daftar ke guru pembimbing masing-masing bidang.' },
+            ];
+            let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Info Lomba & Acara Sekolah</h3>
+                <div class="overflow-y-auto max-h-[75vh]">
+                    ${events.map(event => `<div class="bg-gray-100 p-4 rounded-lg mb-3 border-l-4 ${event.type === 'Lomba' ? 'border-yellow-500' : 'border-green-500'}">
+                        <p class="font-bold">${event.title}</p>
+                        <p class="text-sm text-slate-600">Tanggal: ${event.date}</p>
+                        <button data-event-id="${event.id}" class="view-event-detail-btn mt-2 text-indigo-600 hover:underline text-sm">Lihat Detail</button>
+                    </div>`).join('')}
+                </div>`;
+            openModal(modalContainers.feature, content);
+
+            modalContainers.feature.querySelectorAll('.view-event-detail-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const eventId = e.currentTarget.dataset.eventId;
+                    const eventData = events.find(ev => ev.id === eventId);
+                    if (eventData) {
+                        openConfirmationModal(eventData.title, eventData.detail, () => {});
+                    }
+                });
+            });
+        }
+
+        function openAdminFeatureModal(feature) {
+            let title = '', modalContentHTML = '';
+            const renderTable = (headers, rows) => `<table class="w-full text-left table-auto border-collapse"><thead class="bg-gray-100"><tr>${headers.map(h => `<th class="p-2">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+            switch(feature) {
+                case 'manage-students':
+                    title = 'Kelola Data Siswa';
+                    modalContentHTML = `<p class="text-sm text-slate-500 mb-4">Klik pada baris siswa untuk melihat detail.</p>${renderTable(['ID', 'Nama', 'Kelas'], students.map(s => `<tr data-student-id="${s.id}" class="admin-data-row border-b"><td class="p-2">${s.id}</td><td class="p-2">${s.name}</td><td class="p-2">${s.class}</td></tr>`).join(''))}`;
+                    break;
+                case 'manage-staff':
+                    title = 'Kelola Data Guru & Staf';
+                    modalContentHTML = renderTable(['ID', 'Nama', 'Jabatan', 'Aksi'], staff.map(s => `<tr class="border-b"><td class="p-2">${s.id}</td><td class="p-2">${s.name}</td><td class="p-2">${s.role}</td><td class="p-2"><button data-staff-id="${s.id}" class="edit-staff-btn text-indigo-500 hover:underline text-sm">Edit</button></td></tr>`).join(''));
+                    break;
+                case 'manage-accounts':
+                    title = 'Kelola Akun Pengguna';
+                    modalContentHTML = renderTable(['Username', 'Peran', 'Login Terakhir', 'Aksi'], accounts.map(a => `<tr class="border-b"><td class="p-2">${a.username}</td><td class="p-2">${a.role}</td><td class="p-2">${a.lastLogin}</td><td class="p-2"><button data-username="${a.username}" class="reset-password-btn text-indigo-500 hover:underline text-sm">Reset Password</button></td></tr>`).join(''));
+                    break;
+                 case 'monitor-payments':
+                    title = 'Monitor Pembayaran SPP';
+                    modalContentHTML = renderTable(['Nama Siswa', 'Status', 'Tanggal Bayar'], payments.map(p => `<tr class="border-b"><td class="p-2">${p.name}</td><td class="p-2"><span class="px-2 py-1 text-xs rounded-full font-semibold ${p.status === 'Lunas' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${p.status}</span></td><td class="p-2">${p.date}</td></tr>`).join(''));
+                    break;
+                 case 'finance-reports':
+                    title = 'Buat Laporan Keuangan';
+                    modalContentHTML = renderTable(['Nama Laporan', 'Tanggal', 'Dibuat Oleh', 'Aksi'], reports.map(r => `<tr class="border-b"><td class="p-2">${r.name}</td><td class="p-2">${r.date}</td><td class="p-2">${r.by}</td><td class="p-2"><button data-filename="${r.name}.pdf" class="download-report-btn text-indigo-500 hover:underline text-sm">Unduh</button></td></tr>`).join(''));
+                    break;
+                case 'academic-analysis':
+                    title = 'Analisis Kinerja Akademik';
+                    modalContentHTML = renderTable(['Jenis Analisis', 'Status', 'Aksi'], analyses.map(a => `<tr class="border-b"><td class="p-2">${a.name}</td><td class="p-2"><span class="px-2 py-1 text-xs rounded-full font-semibold ${a.status === 'Selesai' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}">${a.status}</span></td><td class="p-2"><button data-analysis-id="${a.id}" class="view-analysis-btn text-indigo-500 hover:underline text-sm">Lihat Hasil</button></td></tr>`).join(''));
+                    break;
+                default:
+                    title = 'Fitur Dalam Pengembangan'; modalContentHTML = '<div class="p-4 text-center">Fitur ini akan segera tersedia.</div>';
+            }
+
+            const content = `<button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button><h3 class="text-xl font-bold mb-4">${title}</h3><div class="overflow-y-auto max-h-[75vh]">${modalContentHTML}</div>`;
+            openModal(modalContainers.feature, content);
+            
+            // --- Menambahkan Fungsionalitas pada Tombol Simulasi ---
+            const modalContent = modalContainers.feature.querySelector('div[id$="-content"]');
+            modalContent.querySelector('.edit-staff-btn')?.addEventListener('click', (e) => openEditStaffModal(e.currentTarget.dataset.staffId));
+            modalContent.querySelector('.reset-password-btn')?.addEventListener('click', (e) => handleResetPassword(e.currentTarget.dataset.username));
+            modalContent.querySelector('.download-report-btn')?.addEventListener('click', (e) => simulateDownload(e.currentTarget.dataset.filename));
+            modalContent.querySelector('.view-analysis-btn')?.addEventListener('click', (e) => openAnalysisDetailModal(e.currentTarget.dataset.analysisId));
+
+
+            if (feature === 'manage-students') {
+                modalContainers.feature.querySelectorAll('.admin-data-row').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const studentId = row.dataset.studentId;
+                        const studentData = students.find(s => s.id === studentId);
+                        if(studentData) {
+                            const detailContent = `<button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button><h3 class="text-xl font-bold mb-4">Detail Siswa: ${studentData.name}</h3><div class="space-y-2 text-slate-600"><p><strong>ID Siswa:</strong> ${studentData.id}</p><p><strong>NISN:</strong> ${studentData.nisn}</p><p><strong>Kelas:</strong> ${studentData.class}</p><p><strong>Alamat:</strong> ${studentData.address}</p><p><strong>Nama Wali:</strong> ${studentData.parent}</p></div>`;
+                            openModal(modalContainers.gemini, detailContent);
+                        }
+                    });
+                });
+            }
+        }
+        
+        function simulateDownload(filename) {
+            openConfirmationModal('Mengunduh Laporan', `Sistem sedang menyiapkan file "${filename}"...`, async () => {
+                await new Promise(res => setTimeout(res, 1500)); // Simulasi proses unduh
+                openConfirmationModal('Berhasil', `"${filename}" telah berhasil diunduh.`, ()=>{});
+            });
+        }
+        
+        function handleResetPassword(username) {
+            openConfirmationModal('Reset Password', `Apakah Anda yakin ingin mereset password untuk akun "${username}"?`, () => {
+                openConfirmationModal('Berhasil', `Password untuk "${username}" telah direset menjadi '12345678'.`, () => {});
+            });
+        }
+        
+        function openEditStaffModal(staffId) {
+            const staffMember = staff.find(s => s.id === staffId);
+            if (!staffMember) return;
+            
+            const content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Edit Data: ${staffMember.name}</h3>
+                <form id="edit-staff-form" class="space-y-4">
+                     <div><label class="font-semibold">Nama</label><input type="text" value="${staffMember.name}" class="w-full mt-1 p-2 border rounded-lg bg-white"></div>
+                     <div><label class="font-semibold">Jabatan</label><input type="text" value="${staffMember.role}" class="w-full mt-1 p-2 border rounded-lg bg-white"></div>
+                     <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Simpan Perubahan</button>
+                </form>`;
+            openModal(modalContainers.gemini, content);
+            
+            modalContainers.gemini.querySelector('#edit-staff-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                openConfirmationModal('Berhasil', 'Data staf telah diperbarui.', () => {
+                    closeModal(modalContainers.gemini);
+                });
+            });
+        }
+        
+        function openAnalysisDetailModal(analysisId) {
+            const analysis = analyses.find(a => a.id === analysisId);
+            if (!analysis) return;
+            
+            const content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">Hasil Analisis: ${analysis.name}</h3>
+                <p class="text-slate-600">Berikut adalah hasil simulasi analisis data.</p>
+                <img src="https://placehold.co/600x400/eeeeee/6366f1?text=Contoh+Grafik+Analisis" alt="Contoh Grafik" class="mt-4 rounded-lg w-full">`;
+            openModal(modalContainers.gemini, content);
+        }
+
+        function openContentCenterModal() {
+            let content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">✨ Pusat Konten AI</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="mb-4">
+                            <label class="font-semibold mb-2 block text-slate-700">1. Pilih Jenis Konten</label>
+                            <div class="flex space-x-2"><button data-type="announcement" class="content-type-btn flex-1 bg-indigo-600 text-white p-2 rounded-lg">Pengumuman</button><button data-type="social" class="content-type-btn flex-1 bg-gray-200 p-2 rounded-lg">Media Sosial</button></div>
+                        </div>
+                        <form id="content-generator-form">
+                            <div class="mb-4">
+                                <label for="content-points" class="font-semibold mb-2 block text-slate-700">2. Masukkan Poin-Poin Utama</label>
+                                <textarea id="content-points" required class="w-full h-32 p-2 border rounded-lg resize-none bg-white border-gray-300" placeholder="Contoh:\n- Acara: Hari Kemerdekaan\n- Waktu: 17 Agustus, jam 8 pagi\n- Tempat: Lapangan utama"></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label for="content-tone" class="font-semibold mb-2 block text-slate-700">3. Pilih Gaya Bahasa</label>
+                                <select id="content-tone" class="w-full p-2 border rounded-lg bg-white border-gray-300"><option value="Formal">Formal & Resmi</option><option value="Informatif">Informatif & Jelas</option><option value="Antusias">Antusias & Menggugah</option><option value="Santai">Santai & Akrab</option></select>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700"><span>Buat Draf</span></button>
+                        </form>
+                    </div>
+                    <div>
+                        <label class="font-semibold mb-2 block text-slate-700">Hasil Draf</label>
+                        <div id="content-result-container" class="relative">
+                             <div id="content-result" class="h-64 p-4 bg-gray-100 rounded-lg overflow-y-auto markdown-content"><p class="text-slate-500 text-center mt-20">Hasil akan muncul di sini...</p></div>
+                             <button id="copy-content-btn" class="hidden absolute top-2 right-2 bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold py-1 px-2 rounded">Salin Teks</button>
+                        </div>
+                    </div>
+                </div>`;
+            openModal(modalContainers.feature, content);
+
+            const form = modalContainers.feature.querySelector('#content-generator-form');
+            const resultDiv = modalContainers.feature.querySelector('#content-result');
+            const copyBtn = modalContainers.feature.querySelector('#copy-content-btn');
+            const typeButtons = modalContainers.feature.querySelectorAll('.content-type-btn');
+            let activeType = 'announcement';
+
+            typeButtons.forEach(btn => btn.addEventListener('click', () => {
+                activeType = btn.dataset.type;
+                typeButtons.forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-gray-200'); });
+                btn.classList.add('bg-indigo-600', 'text-white'); btn.classList.remove('bg-gray-200');
+            }));
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                resultDiv.innerHTML = '<div class="flex justify-center items-center h-full"><div class="spinner"></div></div>';
+                copyBtn.classList.add('hidden');
+                const points = modalContainers.feature.querySelector('#content-points').value, tone = modalContainers.feature.querySelector('#content-tone').value;
+                let systemPrompt, userQuery;
+                if (activeType === 'announcement') {
+                    systemPrompt = `Anda adalah bagian dari administrasi sekolah. Buat draf pengumuman resmi berdasarkan poin-poin yang diberikan. Pastikan gaya bahasanya ${tone}, informatif, dan jelas untuk seluruh siswa dan guru.`;
+                    userQuery = `Buat pengumuman sekolah dengan gaya ${tone} berdasarkan poin berikut:\n${points}`;
+                } else {
+                    systemPrompt = `Anda adalah admin media sosial untuk sebuah SMA. Buat draf caption yang menarik dan positif untuk platform seperti Instagram atau Facebook. Pastikan gaya bahasanya ${tone} dan sertakan beberapa hashtag yang relevan.`;
+                    userQuery = `Buat konten media sosial dengan gaya ${tone} berdasarkan ide berikut:\n${points}`;
+                }
+                const responseText = await callGeminiAPI(userQuery, systemPrompt);
+                resultDiv.innerHTML = marked.parse(responseText);
+                copyBtn.classList.remove('hidden'); copyBtn.textContent = 'Salin Teks';
+            });
+            
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(resultDiv.innerText).then(() => { copyBtn.textContent = 'Tersalin!'; setTimeout(() => { copyBtn.textContent = 'Salin Teks'; }, 2000);
+                }).catch(err => { console.error('Gagal menyalin:', err); copyBtn.textContent = 'Gagal'; });
+            });
+        }
+
+
+        // === Gemini AI Functions ===
+        async function callGeminiAPI(userQuery, systemPrompt = "") {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        ...(systemPrompt && { systemInstruction: { parts: [{ text: systemPrompt }] } })
+                    })
+                });
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const result = await response.json();
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak dapat memberikan jawaban saat ini.";
+            } catch (error) { console.error("Gemini API call failed:", error); return `Terjadi kesalahan: ${error.message}`; }
+        }
+        
+        function setupGeminiModal(title, inputLabel, buttonText, placeholder, systemPrompt) {
+             const content = `
+                <button class="close-modal-btn absolute top-4 right-4 text-slate-500 hover:text-slate-800">&times;</button>
+                <h3 class="text-xl font-bold mb-4">${title}</h3>
+                <form class="flex-grow flex flex-col">
+                    <label class="mb-2 font-semibold text-slate-700">${inputLabel}</label>
+                    <textarea required class="w-full flex-grow p-2 border rounded-lg mb-4 resize-none bg-white border-gray-300" placeholder="${placeholder}"></textarea>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700"><span>${buttonText}</span></button>
+                </form>
+                <div id="gemini-result" class="mt-4 p-4 bg-gray-100 rounded-lg max-h-60 overflow-y-auto hidden markdown-content"></div>`;
+             openModal(modalContainers.gemini, content);
+             modalContainers.gemini.querySelector('form').addEventListener('submit', (e) => handleGeminiFormSubmit(e, systemPrompt));
+        }
+
+        async function handleGeminiFormSubmit(e, systemPrompt) {
+            e.preventDefault();
+            const form = e.target;
+            const input = form.querySelector('textarea');
+            const resultDiv = form.parentElement.querySelector('#gemini-result');
+            const button = form.querySelector('button');
+
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<div class="flex justify-center items-center"><div class="spinner"></div></div>';
+            button.disabled = true;
+
+            const responseText = await callGeminiAPI(input.value, systemPrompt);
+            resultDiv.innerHTML = marked.parse(responseText);
+            button.disabled = false;
+        }
+
+        // === Background Animation ===
+        function initBackgroundAnimation() {
+            const canvas = document.getElementById('background-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let mouse = { x: null, y: null };
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 1.5 + 1;
+                    this.speedX = Math.random() * 0.4 - 0.2;
+                    this.speedY = Math.random() * 0.4 - 0.2;
+                    this.color = `rgba(99, 102, 241, ${Math.random() * 0.5 + 0.2})`;
+                }
+                update() {
+                    if (this.x > canvas.width || this.x < 0) this.speedX = -this.speedX;
+                    if (this.y > canvas.height || this.y < 0) this.speedY = -this.speedY;
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                }
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            function initParticles() {
+                particles = [];
+                let numberOfParticles = (canvas.height * canvas.width) / 12000;
+                for (let i = 0; i < numberOfParticles; i++) {
+                    particles.push(new Particle());
+                }
+            }
+            initParticles();
+            window.addEventListener('resize', initParticles);
+
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.x;
+                mouse.y = e.y;
+            });
+            window.addEventListener('mouseout', () => {
+                mouse.x = undefined;
+                mouse.y = undefined;
+            });
+            
+            function connectParticles() {
+                let opacityValue = 1;
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                                     + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if (distance < (canvas.width / 8) * (canvas.height / 8)) {
+                            opacityValue = 1 - (distance / 25000);
+                            ctx.strokeStyle = `rgba(67, 56, 202, ${opacityValue})`;
+                            ctx.lineWidth = 0.8;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[a].x, particles[a].y);
+                            ctx.lineTo(particles[b].x, particles[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                for (let i = 0; i < particles.length; i++) {
+                    particles[i].update();
+                    particles[i].draw();
+                }
+                connectParticles();
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        initApp();
+        
+        function formatTimeAgo(date) {
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            if (seconds < 60) return "Beberapa saat yang lalu";
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes} menit yang lalu`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} jam yang lalu`;
+            if (hours < 48) return "Kemarin";
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+        }
+    </script>
+</body>
+</html>
+
